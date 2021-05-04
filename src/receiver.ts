@@ -37,18 +37,18 @@ class Assembler {
 
 let ct = 0;
 let asmblr = new Assembler();
+const fdpromise = fs.promises.open(OUTPUT_FILE_2,'w+')
 
 server.on("message", (msg) => {
   const packet = new RTPPacket(msg);
 
   // packets.push(packet);
-  fs.promises.open(OUTPUT_FILE_2,'w+')
-  .then((fd) => {
+  
+  fdpromise.then((fd) => {
     if (ct === 0)
       console.log(packet.payload);
-    fd.write(packet.payload,0,0,ct);
+    fd.write(packet.payload,0,packet.payload.length,ct*packet.payload.length);
     ct++;
-    fd.close();
   });
 
   if (finalTimeout) {
@@ -68,6 +68,10 @@ server.on("message", (msg) => {
     // fs.writeFileSync(OUTPUT_FILE, data);
 
     console.log(`Captured data written to ${OUTPUT_FILE}`);
+    
+    fdpromise.then((fd) => {
+      fd.close();
+    });
   }, NO_MORE_PACKETS_TIMEOUT_MILLIS);
 });
 
