@@ -16,7 +16,8 @@ const numTotalPackets = Math.ceil(data.length / BYTES_PER_PACKET);
 const ssrc = Math.floor(Math.random() * Math.pow(2, 32));
 const initialTimestamp = Math.floor(Math.random() * 1000);
 const initialSequenceNumber = Math.floor(Math.random() * 1000);
-const packetDuplicationProb = 0.03; // expect approximately 10 duplicated packets in 53KB
+// expect approximately 10 duplicated packets in 53KB (input.ulaw size): 0.03*53000/160 = 10 + something small
+const packetDuplicationProb = 0.03; 
 const packetLossProb = 0.03;
 
 const client = dgram.createSocket("udp4");
@@ -33,8 +34,12 @@ const interval = setInterval(() => {
   if (Math.random() > packetDuplicationProb){
     packetsRead++;
   } else {
-    console.log("dup");
     packetsSent--;
+  }
+
+  if (Math.random() <= packetLossProb) {
+    packetsRead++;
+    packetsSent++;
   }
 
   const packet = new RTPPacket();
