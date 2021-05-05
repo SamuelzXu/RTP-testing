@@ -20,7 +20,7 @@ class Assembler {
   public packets: RTPPacket[] = [];
   private fdPromise : Promise<FileHandle>;
   private fileIdx = 0;
-  private maxSize = 8;
+  private maxSize = 10;
 
   constructor(file: string) {
       this.fdPromise = fs.promises.open(file,'w+');
@@ -37,12 +37,13 @@ class Assembler {
 
   public dump() {
     this.packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
-    let data = Buffer.concat(this.packets.map((p) => p.payload));
+    let iSn = this.packets[0].sequenceNumber;
+    let data = Buffer.concat(this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? true : false ).map((p) => p.payload));
     this.fdPromise.then((fd) => {
       fd.write(data,0,data.length,this.fileIdx);
       this.fileIdx += data.length;
     });
-    this.packets = [];
+    this.packets = this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? false : true);
   }
 }
 

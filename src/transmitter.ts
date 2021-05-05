@@ -4,7 +4,7 @@ import path from "path";
 
 import { RTPPacket } from "./rtp-packet";
 
-const INPUT_FILE = path.resolve(__dirname, "../data/input.ulaw");
+const INPUT_FILE = path.resolve(__dirname, "../data/input2.ulaw");
 const RECEIVER_PORT = 3456;
 const BYTES_PER_PACKET = 160;
 const MILLIS_PER_PACKET = 20;
