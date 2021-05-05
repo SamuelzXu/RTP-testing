@@ -1,6 +1,7 @@
 import { privateEncrypt } from "crypto";
 import dgram from "dgram";
 import fs from "fs";
+import { FileHandle } from "fs/promises";
 import path from "path";
 
 import { RTPPacket } from "./rtp-packet";
@@ -16,40 +17,57 @@ let OUTPUT_FILE_2 = path.resolve(__dirname, "../data/output2.ulaw");
 const server = dgram.createSocket("udp4");
 
 class Assembler {
-  public holeDescriptorList: Array<Boolean>;  
+  public packets: RTPPacket[] = [];
+  private fdPromise : Promise<FileHandle>;
+  private fileIdx = 0;
+  private maxSize = 8;
 
-  constructor() {
-      this.holeDescriptorList = []
+  constructor(file: string) {
+      this.fdPromise = fs.promises.open(file,'w+');
+      this.packets = []
   }
 
-  insert(packet: RTPPacket) {
-    if (this.holeDescriptorList.length < packet.sequenceNumber) {
-      
+  public push(packet: RTPPacket) {
+    //console.log(`${this.packets.push(packet)}, ${packet.sequenceNumber}`);
+    this.packets.push(packet);
+    if (this.packets.length === this.maxSize) {
+      this.dump();
     }
+  }
+
+  public dump() {
+    this.packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    let data = Buffer.concat(this.packets.map((p) => p.payload));
+    this.fdPromise.then((fd) => {
+      fd.write(data,0,data.length,this.fileIdx);
+      this.fileIdx += data.length;
+    });
+    this.packets = [];
   }
 }
 
-// try {
-//   fd = fs.openSync()
-// } catch (err) {
-//   console.error(err);
-// }
-
-let ct = 0;
-let asmblr = new Assembler();
-const fdpromise = fs.promises.open(OUTPUT_FILE_2,'w+')
+//let ct = 0;
+let asmblr = new Assembler(OUTPUT_FILE_2);
+//const fdpromise = fs.promises.open(OUTPUT_FILE_2,'w+')
+let maxseq = 0;
 
 server.on("message", (msg) => {
   const packet = new RTPPacket(msg);
-
-  // packets.push(packet);
+  asmblr.push(packet);
+  //packets.push(packet);
   
-  fdpromise.then((fd) => {
-    if (ct === 0)
-      console.log(packet.payload);
-    fd.write(packet.payload,0,packet.payload.length,ct*packet.payload.length);
-    ct++;
-  });
+  // fdpromise.then((fd) => {
+  //   const pl = packet.payload.length;
+  //   const seqn = packet.sequenceNumber;
+  //   maxseq = seqn > maxseq ? seqn : maxseq;
+  //   if (pl != 160) {
+  //     console.log("phi")
+  //     console.log(pl);
+  //     console.log(seqn);
+  //   }
+  //   fd.write(packet.payload,0,pl,ct*pl);
+  //   ct++;
+  // });
 
   if (finalTimeout) {
     clearTimeout(finalTimeout);
@@ -63,15 +81,16 @@ server.on("message", (msg) => {
     );
     server.close();
 
+    asmblr.dump();
     // packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
     // const data = Buffer.concat(packets.map((p) => p.payload));
     // fs.writeFileSync(OUTPUT_FILE, data);
-
-    console.log(`Captured data written to ${OUTPUT_FILE}`);
+    //console.log(`Captured data written to ${OUTPUT_FILE}`);
     
-    fdpromise.then((fd) => {
-      fd.close();
-    });
+    // fdpromise.then((fd) => {
+    //   fd.close();
+    // });
+    //console.log(`Maximum sequence number: ${maxseq}`);
   }, NO_MORE_PACKETS_TIMEOUT_MILLIS);
 });
 

@@ -48,6 +48,7 @@ const interval = setInterval(() => {
 
       if (packetsSent === numTotalPackets) {
         console.log(`Last packet sent`);
+        console.log(`size ${packet.payload.length}`)
         client.close();
       }
     });
