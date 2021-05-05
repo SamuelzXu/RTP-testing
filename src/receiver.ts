@@ -38,7 +38,8 @@ class Assembler {
   public dump() {
     this.packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
     let iSn = this.packets[0].sequenceNumber;
-    let data = Buffer.concat(this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? true : false ).map((p) => p.payload));
+    let orderedPackets = this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? true : false );
+    let data = Buffer.concat(orderedPackets.map((p) => p.payload));
     this.fdPromise.then((fd) => {
       fd.write(data,0,data.length,this.fileIdx);
       this.fileIdx += data.length;
