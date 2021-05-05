@@ -1,3 +1,4 @@
+import { privateEncrypt } from "crypto";
 import dgram from "dgram";
 import fs from "fs";
 import path from "path";
@@ -15,6 +16,8 @@ const numTotalPackets = Math.ceil(data.length / BYTES_PER_PACKET);
 const ssrc = Math.floor(Math.random() * Math.pow(2, 32));
 const initialTimestamp = Math.floor(Math.random() * 1000);
 const initialSequenceNumber = Math.floor(Math.random() * 1000);
+const packetDuplicationProb = 0.03; // expect approximately 10 duplicated packets in 53KB
+const packetLossProb = 0.03;
 
 const client = dgram.createSocket("udp4");
 
@@ -26,8 +29,13 @@ console.log(`Sending ${INPUT_FILE} to port ${RECEIVER_PORT} as RTP`);
 const interval = setInterval(() => {
   const start = packetsRead * BYTES_PER_PACKET;
   const end = (packetsRead + 1) * BYTES_PER_PACKET;
-
-  packetsRead++;
+  
+  if (Math.random() > packetDuplicationProb){
+    packetsRead++;
+  } else {
+    console.log("dup");
+    packetsSent--;
+  }
 
   const packet = new RTPPacket();
   packet.ssrc = ssrc;
