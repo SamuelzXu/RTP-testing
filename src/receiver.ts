@@ -38,13 +38,13 @@ class Assembler {
   public dump() {
     this.packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
     let iSn = this.packets[0].sequenceNumber;
-    let orderedPackets = this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? true : false );
+    let orderedPackets = this.packets.filter((p,i) => p.sequenceNumber - iSn == i ? true : false );
     let data = Buffer.concat(orderedPackets.map((p) => p.payload));
     this.fdPromise.then((fd) => {
       fd.write(data,0,data.length,this.fileIdx);
       this.fileIdx += data.length;
     });
-    this.packets = this.packets.filter((p,i)=> p.sequenceNumber - iSn == i ? false : true);
+    this.packets = this.packets.filter((p,i) => p.sequenceNumber - iSn == i ? false : true);
   }
 }
 
