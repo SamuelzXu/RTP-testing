@@ -11,6 +11,7 @@
     "build": "tsc --project tsconfig.json",
     "receive": "ts-node ./src/receiver.ts",
     "transmit": "ts-node ./src/transmitter.ts",
+    "transmit spotty": "ts-node ./src/transmitter.ts --spotty",
     "lint": "npm run lint:prettier && npm run lint:eslint",
     "lint:prettier": "prettier --check .",
     "lint:eslint": "eslint src --ext .ts",
