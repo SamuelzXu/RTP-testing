@@ -30,16 +30,17 @@ console.log(`Sending ${INPUT_FILE} to port ${RECEIVER_PORT} as RTP`);
 const interval = setInterval(() => {
   const start = packetsRead * BYTES_PER_PACKET;
   const end = (packetsRead + 1) * BYTES_PER_PACKET;
-  
-  if (Math.random() > packetDuplicationProb){
-    packetsRead++;
-  } else {
-    packetsSent--;
-  }
 
+  // packet los and packet duplication are mutually exclusive
   if (Math.random() <= packetLossProb) {
     packetsRead++;
     packetsSent++;
+  } 
+  else if (Math.random() > packetDuplicationProb){
+    packetsRead++;
+  } 
+  else {
+    packetsSent--;
   }
 
   const packet = new RTPPacket();
