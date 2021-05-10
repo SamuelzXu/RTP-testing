@@ -1,6 +1,6 @@
 import { privateEncrypt } from "crypto";
 import dgram from "dgram";
-import fs from "fs";
+import fs, { close } from "fs";
 import { FileHandle } from "fs/promises";
 import path from "path";
 
@@ -10,7 +10,6 @@ const OUTPUT_FILE = path.resolve(__dirname, "../data/output.ulaw");
 const RECEIVER_PORT = 3456;
 const NO_MORE_PACKETS_TIMEOUT_MILLIS = 100;
 
-const packets: RTPPacket[] = [];
 let finalTimeout: NodeJS.Timeout | undefined;
 let OUTPUT_FILE_2 = path.resolve(__dirname, "../data/output2.ulaw");
 
@@ -28,51 +27,55 @@ class Assembler {
   }
 
   public push(packet: RTPPacket) {
-    //console.log(`${this.packets.push(packet)}, ${packet.sequenceNumber}`);
     this.packets.push(packet);
+    // only write to file when the buffer is full
     if (this.packets.length === this.maxSize) {
-      this.dump();
+      this.offload();
     }
   }
 
-  public dump() {
-    // we order the packets, write the consecutive packets, and keep the non-consecutive packets
-    this.packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
-    let iSn = this.packets[0].sequenceNumber;
-    let orderedPackets = this.packets.filter((p,i) => p.sequenceNumber - iSn == i ? true : false );
-    let data = Buffer.concat(orderedPackets.map((p) => p.payload));
-    this.packets = this.packets.filter((p,i) => p.sequenceNumber - iSn == i ? false : true);
+  public offload() {
+    // we order the packets,  remove the duplicate packets,
+    // write and remove the consecutive packets, 
+    // and keep the rest in buffer.
+
+    this.cleanup();
+    let conseqPackets = this.packets.filter((p,i) => i < 5 ? true : false );
+    let data = Buffer.concat(conseqPackets.map((p) => p.payload));
+    this.packets = this.packets.filter((p,i) => i < 5 ? false : true );
 
     // write asynchronously to file
     this.fdPromise.then((fd) => {
       fd.write(data,0,data.length,this.fileIdx);
       this.fileIdx += data.length;
     });
+  }  
+
+  public dump() {
+    // dumps and closes the file.
+    this.cleanup();
+    let data = Buffer.concat(this.packets.map((p) => p.payload));
+    this.fdPromise.then((fd) => {
+      fd.write(data,0,data.length,this.fileIdx);
+      fd.close();
+    });
+  }
+
+  private cleanup() {
+    // removes duplicates and sorts the packets in sequenceNumber
+    this.packets = this.packets
+    .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+    .filter((item, pos, ary) => 
+      !pos || item.sequenceNumber != ary[pos-1].sequenceNumber 
+    );
   }
 }
 
-//let ct = 0;
 let asmblr = new Assembler(OUTPUT_FILE_2);
-//const fdpromise = fs.promises.open(OUTPUT_FILE_2,'w+')
-let maxseq = 0;
 
 server.on("message", (msg) => {
   const packet = new RTPPacket(msg);
   asmblr.push(packet);
-  //packets.push(packet);
-  
-  // fdpromise.then((fd) => {
-  //   const pl = packet.payload.length;
-  //   const seqn = packet.sequenceNumber;
-  //   maxseq = seqn > maxseq ? seqn : maxseq;
-  //   if (pl != 160) {
-  //     console.log("phi")
-  //     console.log(pl);
-  //     console.log(seqn);
-  //   }
-  //   fd.write(packet.payload,0,pl,ct*pl);
-  //   ct++;
-  // });
 
   if (finalTimeout) {
     clearTimeout(finalTimeout);
@@ -85,17 +88,7 @@ server.on("message", (msg) => {
       `Received no packets in ${NO_MORE_PACKETS_TIMEOUT_MILLIS}ms; finishing`
     );
     server.close();
-
     asmblr.dump();
-    // packets.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
-    // const data = Buffer.concat(packets.map((p) => p.payload));
-    // fs.writeFileSync(OUTPUT_FILE, data);
-    //console.log(`Captured data written to ${OUTPUT_FILE}`);
-    
-    // fdpromise.then((fd) => {
-    //   fd.close();
-    // });
-    //console.log(`Maximum sequence number: ${maxseq}`);
   }, NO_MORE_PACKETS_TIMEOUT_MILLIS);
 });
 
