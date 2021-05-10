@@ -8,7 +8,7 @@ import { RTPPacket } from "./rtp-packet";
 
 const OUTPUT_FILE = path.resolve(__dirname, "../data/output.ulaw");
 const RECEIVER_PORT = 3456;
-const NO_MORE_PACKETS_TIMEOUT_MILLIS = 100;
+const NO_MORE_PACKETS_TIMEOUT_MILLIS = 200;
 
 let finalTimeout: NodeJS.Timeout | undefined;
 let OUTPUT_FILE_2 = path.resolve(__dirname, "../data/output2.ulaw");
@@ -19,7 +19,7 @@ class Assembler {
   public packets: RTPPacket[] = [];
   private fdPromise : Promise<FileHandle>;
   private fileIdx = 0;
-  private maxSize = 10;
+  private maxSize = 12;
 
   constructor(file: string) {
       this.fdPromise = fs.promises.open(file,'w+');
@@ -45,10 +45,10 @@ class Assembler {
     let data = Buffer.concat(conseqPackets.map((p) => p.payload));
     this.packets = this.packets.filter((p,i) => i <= 4 ? false : true );
 
-    conseqPackets.forEach((p,i,ary) => {
+    this.packets.slice(0,Math.min(6,this.packets.length))
+    .forEach((p,i,ary) => {
       let s = p.sequenceNumber - 1;
       let t = i == 0 ? s : ary[i - 1].sequenceNumber;
-
       for (let i=s; i>t; i--) {
         console.log(`Lost packet #${i}`)
       }
