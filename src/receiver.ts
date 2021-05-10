@@ -38,11 +38,21 @@ class Assembler {
     // we order the packets,  remove the duplicate packets,
     // write and remove the consecutive packets, 
     // and keep the rest in buffer.
+    // Notify of lost packets.
 
     this.cleanup();
-    let conseqPackets = this.packets.filter((p,i) => i < 5 ? true : false );
+    let conseqPackets = this.packets.filter((p,i) => i <= 4 ? true : false );
     let data = Buffer.concat(conseqPackets.map((p) => p.payload));
-    this.packets = this.packets.filter((p,i) => i < 5 ? false : true );
+    this.packets = this.packets.filter((p,i) => i <= 4 ? false : true );
+
+    conseqPackets.forEach((p,i,ary) => {
+      let s = p.sequenceNumber - 1;
+      let t = i == 0 ? s : ary[i - 1].sequenceNumber;
+
+      for (let i=s; i>t; i--) {
+        console.log(`Lost packet #${i}`)
+      }
+    });
 
     // write asynchronously to file
     this.fdPromise.then((fd) => {

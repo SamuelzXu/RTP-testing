@@ -31,11 +31,11 @@ console.log(`Sending ${INPUT_FILE} to port ${RECEIVER_PORT} as RTP`);
 const interval = setInterval(() => {
   const start = packetsRead * BYTES_PER_PACKET;
   const end = (packetsRead + 1) * BYTES_PER_PACKET;
-  const loss = false; //spotty ? Math.random() <= packetLossProb : false;
+  const loss = spotty ? Math.random() <= packetLossProb : false;
   const dupl = spotty ? Math.random() <= packetDuplicationProb : false;
   
   if (loss) {
-    console.log("loss");
+    console.log(`Lost packet #${initialSequenceNumber + packetsRead}`);
     packetsRead++;
     packetsSent++;
   }
